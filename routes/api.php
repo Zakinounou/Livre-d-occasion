@@ -26,9 +26,9 @@ Route::get('/admin',[adminController::class,]);
 Route::get('/archiver',[adminController::class,'archiverClient']);
 Route::get('/supprimer_livre',[livreController::class,'supprimerLivre']);
 Route::get('/etatcom',[livreController::class,'set_etatcom_livre']);
-Route::get('/test',[livreController::class,'test']);
+Route::post('/test',[livreController::class,'test']);
 
-Route::post('/images',[livreController::class,'uploadImages']);
+Route::post('/photo_profil',[livreController::class,'uploadImages']);
 
 
 

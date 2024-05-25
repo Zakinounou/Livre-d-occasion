@@ -148,6 +148,18 @@ class livreController extends Controller
             'photos.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Example validation rules for an image upload
             
         ]);
+
+        $photoPaths = [];
+
+        // Check if photos are present in the request
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photo) {
+                // Store each photo in the 'uploads' directory and get its path
+                $path = $photo->store('uploads', 'public');
+                $photoPaths[] = $path; // Add the path to the array
+            }
+
+
        
 
         $livres = $request->session()->get('livresproposer', []);
@@ -164,7 +176,7 @@ class livreController extends Controller
             'category' => $validatedData['category'],
             'etat' => $validatedData['etat'],
             'prix' => $validatedData['prix'],
-            'photos' => $validatedData['photos'],
+            'photos' => $photoPaths,
             
         ];
         
@@ -174,7 +186,7 @@ class livreController extends Controller
 
 
         return  "des livres ont été proposés avec succès";
-    }
+    }}
 
     public function showproposedlivres(Request $request)
     {
@@ -336,8 +348,9 @@ class livreController extends Controller
             return response()->json(['message' => 'No changes detected'], 200);
         }
     }
-    public function test(){
-        print "helloe world ";
+    public function test($request){
+        $tet=$request->par;
+        print $tet;
         
     }
     }
