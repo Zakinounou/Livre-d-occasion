@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\auteur;
+use App\Models\ecrir;
 use App\Models\exemplaire;
 use App\Models\photo;
 use App\Models\livre;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 use Illuminate\Http\Request;
 
@@ -27,166 +29,155 @@ class livreController extends Controller
      */
     public function create(Request $request)
 {
-        
-        $ids = explode(',', $request->ids);
-        $ids = array_map('intval', $ids); 
-        //$ids=[1];
-        print"ids";
-        $uploadedImages = [];
+    // Get the IDs from the request and convert them to integers
+    $ids = explode(',', $request->ids);
+    $ids = array_map('intval', $ids); 
 
+    // Get the proposed books from the session
+    $livresproposer = $request->session()->get('livresproposer',[]);
 
-        $livresproposer = $request->session()->get('livresproposer',[]);
-        foreach($livresproposer as $livre ){
-            foreach ($livre->file('images') as $image) {
-                // Store each image in the specified directory
-                $imagePath = $image->store('public/images');
-                $uploadedImages[] = $imagePath;
+    // Loop through each proposed book
+    foreach ($livresproposer as $livre) {
+        // Check if the book ID is in the list of IDs from the request
+        if (in_array($livre['idt'], $ids)) {
+            // Check if the book already exists in the database
+            $livre_exist = Livre::where('titre', $livre['titre'])->first();
+            $auteur = Auteur::where('nom', $livre['auteur_nom'])->where('prenom', $livre['auteur_prenom'])->first();
+
+            if ($livre_exist) {
+                // Create an exemplaire if the book exists
+                Exemplaire::create([
+                    'isbn' => $livre_exist->id,
+                    'etat' => $livre['etat'],
+                    'prix' => $livre['prix'],
+                ]);
+                print "Exemplaire ajouté\n";
             }
+
+            if (!$auteur) {
+                // Create an author if they do not exist
+                $auteur = Auteur::create([
+                    "nom" => $livre['auteur_nom'],
+                    "prenom" => $livre['auteur_prenom'],
+                    "Nationalite" => $livre['Nationalite'],
+                ]);
+                print "Auteur ajouté\n";
+
+                // Create a new book if it does not exist
+                $new_livre = Livre::create([
+                    "id" => $livre['id'],
+                    "titre" => $livre['titre'],
+                    "anneePublication" => $livre['anneePublication'],
+                    "category" => $livre['category'],
+                    "description" => $livre['description'],
+                    "maison_edition" => $livre['maison_edition'],
+                    "nbr_page" => $livre['nbr_page'],
+                    "etatcom" => 'acheté',
+                    "langue" => $livre['langue']
+                ]);
+                print "Nouveau livre ajouté\n";
+
+                // Create a relationship between the author and the book
+                Ecrir::create([
+                    "idAu" => $auteur->id,
+                    "id" => $livre['id']
+                ]);
+                print "Relation Ecrire ajoutée\n";
+
+                // Loop through each photo path and create a photo record
+                foreach ($livre['photos'] as $photo) {
+                    Photo::create([
+                        "path" => $photo,
+                        "isbn" => $livre['id'],
+                    ]);
+                    print "Nouvelle photo ajoutée\n";
+                }
+            }
+        } else {
+            print "Ce livre n'est pas sélectionné\n";
         }
-       
-
-
-        foreach($livresproposer as $livre ){
-            if(in_array($livre['idt'],$ids)){
-                $livre_exist=Livre::where('titre', $livre['titre'])->first();
-                $auteur=auteur::where('nom',$livre['auteur_nom'])->where('prenom',$livre['auteur_prenom'])->first();
-                    
-                if(($livre_exist)){
-                    exemplaire::create([
-                        'id'=>$livre_exist->id,
-                        'etat'=>$livre['etat'],
-                        'prix'=>$livre['prix'],
-                    ]);
-                    print "exemplaire ajoute";
-                }
-                else
-                {   
-                    if(!$auteur){
-                    $auteur=auteur::create([
-                        "nom"=>$livre['auteur_nom'],
-                        "prenom"=>$livre['auteur_prenom'],
-                        "Nationalite"=>$livre['Nationalite'],
-                    ]);
-                    
-
-                }
-                    $auteur_con=auteur::where('ida',$auteur->ida)->first();
-                    print "\nauteur ajoute";
-
-                     $new_livre=livre::create([
-                        "id"=>$livre['id'],
-                        "titre"=>$livre['titre'],
-                        "ida"=>$auteur_con->ida,
-                        "anneePublication"=>$livre['anneePublication'],
-                        "category"=>$livre['category'],
-                        "description"=>$livre['description'],
-                        "nbex"=>0,
-                        "etatcom"=>'acheté',
-                    ]);
-                    print "new livre ajoute"; 
-                
-                
-                //$photos_path = explode(',', $livre['photos']);
-               // foreach($photos_path as $path){
-                    foreach ($livre->file('photos') as $photo) {
-                    $imagePath = $photo->store('public/images');
-                    photo::create([
-                    "path"=>$imagePath,
-                    "isbn"=>$new_livre->id,
-                    ]);
-                    print "new photo ajoute";
-                }
-             }   
-               
-            }else print" n'est pas coucher";
-        }
-    
-        $request->session()->flush();
-        print "session deleted ";
-
-        return "Livres ajoutés avec succès ";
     }
 
-    public function uploadImages(Request $request)
-{
-    // Validate the uploaded files
-    $request->validate([
-        'images.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Adjust the validation rules as needed
-    ]);
+    // Flush the session after processing
+    $request->session()->flush();
+    print "Session supprimée\n";
 
-    
-    // Loop through each uploaded image
-        foreach ($request->file('photos') as $photo) {
-            $imagePath = $photo->store('public/images');
-            photo::create([
-            "path"=>$imagePath,
-            "isbn"=>2038635138496,
-            ]);
-            print "new photo ajoute";
-        
-    }
-
-    return 'done';
+    return "Livres ajoutés avec succès";
 }
 
-
+ 
     
+
+
     public function store(Request $request)
     {
-        
-        $validatedData=$request->validate([
-            'id'=>'required',
-            'auteur_nom'=>'required|string|max:255',
-            'auteur_prenom'=>'required|string|max:255',
-            'Nationalite'=>'required|string|max:255',
-            'titre'=>'required|string|max:255',
-            'anneePublication'=>'required|string|max:255',
-            'description'=>'required|string|max:255',
-            'category'=>'required|string|max:255',
-            'etat'=>'required|string|max:255',
-            'prix'=>'required|string|max:255',  
-            'photos.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Example validation rules for an image upload
-            
+        // Validate the incoming request without flashing session data
+        $validator = Validator::make($request->all(), [
+            'id' => 'required',
+            'auteur_nom' => 'required|string|max:255',
+            'auteur_prenom' => 'required|string|max:255',
+            'Nationalite' => 'required|string|max:255',
+            'titre' => 'required|string|max:255',
+            'anneePublication' => 'required|string|max:255',
+            'description' => 'required|string|max:255',
+            'category' => 'required|string|max:255',
+            'etat' => 'required|string|max:255',
+            'prix' => 'required|string|max:255',
+            'nbr_page' => 'required|string|max:255',
+            'maison_edition' => 'required|string|max:255',
+            'langue' => 'required|string|max:255',
+            'photos.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        $photoPaths = [];
+        // Check if validation fails
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-        // Check if photos are present in the request
+        $validatedData = $validator->validated();
+
+        // Handle photo uploads
+        $photoPaths = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
                 // Store each photo in the 'uploads' directory and get its path
                 $path = $photo->store('uploads', 'public');
                 $photoPaths[] = $path; // Add the path to the array
             }
+        }
+        
 
-
-       
-
+        // Get the existing proposed books from the session
         $livres = $request->session()->get('livresproposer', []);
-        $livreproposer = [   
 
-            'idt'=>count($livres)+1,
+        // Add the new book data along with photo paths
+        $livreproposer = [
+            'idt' => count($livres) + 1,
             'auteur_nom' => $validatedData['auteur_nom'],
             'auteur_prenom' => $validatedData['auteur_prenom'],
             'Nationalite' => $validatedData['Nationalite'],
-            'id'=>$validatedData['id'],
+            'id' => $validatedData['id'],
             'titre' => $validatedData['titre'],
             'anneePublication' => $validatedData['anneePublication'],
             'description' => $validatedData['description'],
             'category' => $validatedData['category'],
             'etat' => $validatedData['etat'],
             'prix' => $validatedData['prix'],
+            'nbr_page' => $validatedData['nbr_page'],
+            'langue' => $validatedData['langue'],
+            'maison_edition' => $validatedData['maison_edition'],
             'photos' => $photoPaths,
-            
         ];
-        
 
+        // Add the new proposed book to the session
         $livres[] = $livreproposer;
-        $request->session()->put('livresproposer',$livres);
+        $request->session()->put('livresproposer', $livres);
+
+        // Return a JSON response indicating success
+        return response()->json(['message' => 'Book proposed successfully!', 'data' => $livreproposer], 200);
+    }
 
 
-        return  "des livres ont été proposés avec succès";
-    }}
 
     public function showproposedlivres(Request $request)
     {
@@ -303,15 +294,15 @@ class livreController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request)
+    public function archiverLivre($id)
     {
-    $livre=Livre::find($request->id);
+    $livre=Livre::find($id);
     if($livre) $livre->etatcom='archivé';
     else return response()->json(['error'=> 'livre introuvable']);
     return response()->json(['error'=>'Le livre a été supprimé avec succès']);
     }
 
-    public function change(Request $request)
+    public function edite_livre(Request $request)
     { 
         $livre = Livre::find($request->id);
 

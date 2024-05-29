@@ -14,10 +14,13 @@ class livre extends Model
         'titre',
         'ida',
         'description',
-        'anneePubliction',
+        'anneePublication',
         'category',
         'etatcom',
-        'nbex'
+        'nbex',
+        'langue',
+        'nbr_page',
+        'maison_edition'
    
     ];
 }

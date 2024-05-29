@@ -5,15 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class exemplaire extends Model
+class localisation extends Model
 {
     use HasFactory;
 
-    protected $table='exemplaire';
+    protected $table = 'localisation';
     protected $fillable=[
-        'isbn',
-        'etat',
-        'prix',
-        'etat_Com',
-    ];
+        'idAch',
+        'direction',
+   ];
+public $timestamps =false;
 }

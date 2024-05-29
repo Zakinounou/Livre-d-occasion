@@ -8,5 +8,4 @@ use App\Models\Usersarchive;
 
 class adminController extends Controller
 {
-    public function changeretatcomlivre()
 }
