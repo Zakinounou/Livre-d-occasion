@@ -11,8 +11,11 @@ class commande extends Model
     protected $table='commande';
     protected $fillable=[
         'avec_livr',
-        'idAc',
-        'idpan'
+        'idAch',
+        'dist', 
+        'idpan',
+        'idloc'
     ];
+    public $timestamps=false;
 
 }

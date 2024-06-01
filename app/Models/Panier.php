@@ -12,7 +12,7 @@ class Panier extends Model
     protected $table = 'paniers';
 
     protected $fillable=[
-        'idPanier',
+        'id',
         'idEx',
         'idC'
     ];

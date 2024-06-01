@@ -11,8 +11,6 @@ class localisationController extends Controller
     public function index()
     {
         // Return a list of all localisations
-
-        
         $localisations = localisation::all();
         return response()->json($localisations);
     }
@@ -25,27 +23,27 @@ class localisationController extends Controller
         ]);
 
         // Retrieve the user
-        $userID=auth()->id();
+        $userID = auth()->id();
         $user = User::find($userID);
 
         // Create or update the localisation for the user
-        $localisation = localisation::Create([
+        $localisation = localisation::create([
             'idAch' => $user->id,
-            'direction' => $validatedData['direction']]
-        );
+            'direction' => $validatedData['direction']
+        ]);
 
-        return response()->json(['message' => 'localisation assigned successfully', 'localisation' => $localisation]);
+        return response()->json(['message' => 'Localisation assigned successfully', 'localisation' => $localisation]);
     }
 
     public function show()
     {
         // Show a specific localisation
-        $userID=auth()->id();
+        $userID = auth()->id();
         $user = User::find($userID);
 
         $localisation = localisation::where('idAch', $userID)->get();
-        if (!$localisation) {
-            return response()->json(['error' => 'localisation not found'], 404);
+        if ($localisation->isEmpty()) {
+            return response()->json(['error' => 'Localisation not found'], 404);
         }
         return response()->json($localisation);
     }
@@ -54,21 +52,20 @@ class localisationController extends Controller
     {
         // Validate the incoming request data
         $validatedData = $request->validate([
-            
             'direction' => 'required|url',
         ]);
-        
+
         // Retrieve the localisation
         $localisation = localisation::find($id);
 
         if (!$localisation) {
-            return response()->json(['error' => 'localisation not found'], 404);
+            return response()->json(['error' => 'Localisation not found'], 404);
         }
 
         // Update the localisation
         $localisation->update(['direction' => $validatedData['direction']]);
 
-        return response()->json(['message' => 'localisation updated successfully', 'localisation' => $localisation]);
+        return response()->json(['message' => 'Localisation updated successfully', 'localisation' => $localisation]);
     }
 
     public function destroy($id)
@@ -77,12 +74,12 @@ class localisationController extends Controller
         $localisation = localisation::find($id);
 
         if (!$localisation) {
-            return response()->json(['error' => 'localisation not found'], 404);
+            return response()->json(['error' => 'Localisation not found'], 404);
         }
 
         // Delete the localisation
         $localisation->delete();
 
-        return response()->json(['message' => 'localisation deleted successfully']);
+        return response()->json(['message' => 'Localisation deleted successfully']);
     }
 }

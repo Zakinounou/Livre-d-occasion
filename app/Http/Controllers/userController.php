@@ -6,10 +6,12 @@ use App\Models\commande;
 use App\Models\exemplaire;
 use App\Models\User;
 use App\Models\livre;
+use App\Models\localisation;
 use App\Models\Panier;
 
 use Illuminate\Support\Facades\Validator;
-
+use Carbon\Carbon;
+use App\Models\Livraison;
 use App\Models\Usersarchive;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -170,8 +172,11 @@ public function updatemobile(Request $request){
 
 public function store(Request $request){
         // Validate the incoming request without flashing session data
+  //     $request->session()->flush();
+//return 1;
         $validator = Validator::make($request->all(), [
             'avec_livr' => 'required|string|max:5',
+            'dist'=>'required |string',
             
         ]);
 
@@ -186,11 +191,15 @@ public function store(Request $request){
         $userId=auth()->id();
         $panier = Panier::where('idC', $userId)->first();
         // Add the new book data along with photo pat
-
+if(!$panier){
+    return response()->json(['errors' => 'le panier est vide !'], 423);}
     $commandeproposer = [
+    'idt' => count($commandes) + 1,
     'avec_livr' => $validatedData['avec_livr'],
     'idAch' => $userId,
-    'idPa' => $panier->idPanier,
+    'dist'=>$validatedData['dist'],
+    'idPa' => $panier->id,
+
     ];
 
         // Add the new proposed book to the session
@@ -202,115 +211,190 @@ public function store(Request $request){
     }
 
 
-public function etablireCommandes(Request $request){
+    public function etablireCommandes(Request $request){
+
         // Get the IDs from the request and convert them to integers
         $ids = explode(',', $request->ids);
-        $ids = array_map('intval', $ids); 
+        $ids = array_map('intval', $ids);
     
-        // Get the proposed books from the session
-        $commandesproposer = $request->session()->get('commandesproposer',[]);
-    if($ids){
-        // Loop through each proposed book
-        foreach ($commandesproposer as $commande) {
-            // Check if the book ID is in the list of IDs from the request
-            if (in_array($commande['idt'], $ids)) {
-                // Check if the book already exists in the database
-               
+        // Get the proposed commandes from the session
+        $commandesproposer = $request->session()->get('commandesproposer', []);
     
-                    // Create a new book if it does not exist
-                    $new_commande = commande::create([
-                        "avec_livr" => $commande['avec_livr'],
-                        "idAch" => $commande['idAch'],
-                        "idpan" => $commande['idpan'],
-                    ]);
-                    print "Nouveau commande etablire\n";
-    
-                    // Create a relationship between the author and the book
-                    
-                    // Loop through each photo path and create a photo record
-                   
-                }
-                else {
-                print "\nCette commande n'est pas sélectionné\n";
-            }
-        }
-    
-        // Flush the session after processing
-        $request->session()->flush();
-        print "Session supprimée\n";
-    
-        return "commandes etablire avec succès";
-    }
-    else{
-        return "aucun commande a ete etablire";
-    }
-    }
+        if (!empty($ids)) {
+            // Track if any commandes were processed
+            $processed = false;
 
+            // Loop through each prorposed commande
+            foreach ($commandesproposer as $commande) {
+
+                // Check if the 'idcommande' key exists in the current commande
+                if (isset($commande['idt'])) {
+                    // Check if the commande ID is in the list of IDs from the request
+                    if (in_array($commande['idt'], $ids)) {
+                        // Create a new commande
+                        $localisation = Localisation::where('idAch', $commande['idAch'])
+                        ->where('valide', 'oui')
+                        ->first();
+                        if($localisation){
+                        $localisation->valide='no';
+                        $localisation->save();
+
+
+                        commande::create([
+                            "avec_livr" => $commande['avec_livr'],
+                            "idAch" => $commande['idAch'],
+                            "dist"=> $commande['dist'],
+                            "idpan" => $commande['idPa'],
+                            "idloc" => $localisation->id,
+                        ]);
+                    }else {
+                        return 'svp, fourner un localisation!';
+                    }
+
+
+                        echo "Nouveau commande établie\n";
+                        $processed = true;
+                        $panierItems = Panier::where('idC', $commande['idAch'])->get();
+                        foreach ($panierItems as $item) {
+                            Panier::where('id', $item['id'])->delete();
+                        }   
+                        echo "Panier vidé pour l'utilisateur avec ID " . $commande['idAch'] . "\n";
+
+                    } else {
+                        echo "\nCette commande n'est pas sélectionnée\n";
+                    }
+                } else {
+                    echo "\nCommande sans 'idcommande'\n";
+                }
+            }
+    
+            // Flush the session after processing
+            $request->session()->flush();
+            echo "Session supprimée\n";
+    
+            if ($processed) {
+                return response()->json(['message' => 'Commandes établies avec succès'], 200);
+            } else {
+                return response()->json(['message' => 'Aucune commande n\'a été établie'], 200);
+            }
+        } else {
+            return response()->json(['message' => 'Aucun commande à établir'], 400);
+        }
+    }
+    
 
     public function showRequestCommande(Request $request)
     {
         // Retrieve 'commandesproposer' from the session
-
         $requestedCommandes = $request->session()->get('commandesproposer', []);
-
     
-        // Initialize an array to hold all 'avec_livr' values
-        $avecLivrValues = [];
+        // Initialize an array to hold the full command information
+        $fullCommandes = [];
+    
+        // Initialize a counter for the commande ID
+        $commandeId = 1;
     
         // Check if 'commandesproposer' exists and is an array
         if (is_array($requestedCommandes)) {
             // Loop through each item in the 'commandesproposer' array
             foreach ($requestedCommandes as $commande) {
-                // Add 'avec_livr' value to the array
-                $avecLivrValues[] = $commande['avec_livr'];
+                // Initialize an array to hold the result for this specific commande
+                $Rcommande = ['idcommande' => $commande['idt'],'destination'=> $commande['dist']];
     
                 // Find the user by 'idAch'
                 $user = User::find($commande['idAch']);
-                $Rcommande[]=$user;
     
-                // Get panier records where 'idAch' matches
+                if ($user) {
+                    $Rcommande['user'] = [
+                        'nom' => $user->nom,
+                        'prenom' => $user->prenom
+                    ];
+                }
+    
+                // Get panier records where 'idC' matches
                 $panier = Panier::where('idC', $commande['idAch'])->get();
     
-                // Assume you want to get the first Panier item for simplicity
-                if ($panier->isNotEmpty()) {
-                    $firstPanierItem = $panier->first();
+                // Initialize an array to hold the exemplaire data
+                $exemplaireData = [];
     
+                // Loop through each panier item
+                foreach ($panier as $panierItem) {
                     // Find the exemplaire by 'idEx'
-                    $exe = Exemplaire::where('idex', $firstPanierItem->idEx)->first();
+                    $exemplaire = Exemplaire::where('id', $panierItem->idEx)->first();
     
-                    if ($exe) {
+                    if ($exemplaire) {
                         // Find the livre by 'isbn'
-                
-                        $livre = Livre::find($exe->isbn);
-
-                        $Rcommande[]=$livre;
-
+                        $livre = Livre::find($exemplaire->isbn);
     
-                        
+                        if ($livre) {
+                            $exemplaireData[] = [
+                                'titre' => $livre->titre,
+                                'idex' => $exemplaire->id,
+                                'prix' => $exemplaire->prix,
+                                'etat' => $exemplaire->etat
+                            ];
+                        }
                     }
                 }
-                $full[]=$Rcommande;
+    
+                // Add the exemplaire data to the current commande result
+                $Rcommande['exemplaires'] = $exemplaireData;
+    
+                // Add the result for this specific commande to the full result set
+                $fullCommandes[] = $Rcommande;
+    
+                // Increment the commande ID for the next iteration
+                $commandeId++;
             }
-
+    
+            // Return a JSON response with all command information
+            return response()->json($fullCommandes);
         }
-    return $full;
-        // Return a JSON response with all 'avec_livr' values (if needed)
-        return response()->json(['avec_livr' => $avecLivrValues]);
+    
+        // Return a default response if no commandes are found
+        return response()->json(['message' => 'No commandes found in session']);
+    }
+
+
+    
+    public function getAvailableHours($date)
+    {
+        // Define business hours
+        $businessStartHour = 8; // 8 AM
+        $businessEndHour = 16; // 4 PM
+    
+        // Convert date to Carbon instance and check the day of the week
+        $date = Carbon::parse($date);
+        $dayOfWeek = $date->dayOfWeek;
+    
+        // Check if the date is a Friday (Carbon::FRIDAY == 5)
+        if ($dayOfWeek == Carbon::FRIDAY) {
+            return response()->json([
+                'date' => $date->toDateString(),
+                'available_hours' => [],
+                'message' => 'No deliveries are available on Fridays.'
+            ]);
+        }
+    
+        // Fetch existing deliveries for the given date
+        $existingDeliveries = Livraison::whereDate('datelivr', $date->toDateString())
+                                        ->pluck('heure');
+    
+        // Create a list of all possible hours within business hours
+        $availableHours = collect();
+        for ($hour = $businessStartHour; $hour < $businessEndHour; $hour++) {
+            $availableHours->push($hour . ':00:00');
+        }
+    
+        // Remove the hours that are already booked
+        $availableHours = $availableHours->diff($existingDeliveries);
+    
+        return response()->json([
+            'date' => $date->toDateString(),
+            'available_hours' => $availableHours->values()
+        ]);
     }
     
 
 
-
-
-
-
-
-
-    }    
-        
-
-
-
-
-
-
+}   

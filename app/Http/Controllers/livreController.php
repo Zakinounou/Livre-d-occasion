@@ -2,20 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\auteur;
-use App\Models\ecrir;
-use App\Models\exemplaire;
-use App\Models\photo;
-use App\Models\livre;
-use Illuminate\Contracts\Session\Session;
+use App\Models\Auteur;
+use App\Models\Ecrir;
+use App\Models\Exemplaire;
+use App\Models\Photo;
+use App\Models\Livre;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-
 use Illuminate\Http\Request;
 
-use function PHPUnit\Framework\returnSelf;
-
-class livreController extends Controller
+class LivreController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -28,86 +24,82 @@ class livreController extends Controller
      * Show the form for creating a new resource.
      */
     public function create(Request $request)
-{
-    // Get the IDs from the request and convert them to integers
-    $ids = explode(',', $request->ids);
-    $ids = array_map('intval', $ids); 
+    {
+        // Get the IDs from the request and convert them to integers
+        $ids = explode(',', $request->ids);
+        $ids = array_map('intval', $ids); 
 
-    // Get the proposed books from the session
-    $livresproposer = $request->session()->get('livresproposer',[]);
+        // Get the proposed books from the session
+        $livresproposer = $request->session()->get('livresproposer', []);
 
-    // Loop through each proposed book
-    foreach ($livresproposer as $livre) {
-        // Check if the book ID is in the list of IDs from the request
-        if (in_array($livre['idt'], $ids)) {
-            // Check if the book already exists in the database
-            $livre_exist = Livre::where('titre', $livre['titre'])->first();
-            $auteur = Auteur::where('nom', $livre['auteur_nom'])->where('prenom', $livre['auteur_prenom'])->first();
+        // Loop through each proposed book
+        foreach ($livresproposer as $livre) {
+            // Check if the book ID is in the list of IDs from the request
+            if (in_array($livre['idt'], $ids)) {
+                // Check if the book already exists in the database
+                $livre_exist = Livre::where('titre', $livre['titre'])->first();
+                $auteur = Auteur::where('nom', $livre['auteur_nom'])->where('prenom', $livre['auteur_prenom'])->first();
 
-            if ($livre_exist) {
-                // Create an exemplaire if the book exists
-                Exemplaire::create([
-                    'isbn' => $livre_exist->id,
-                    'etat' => $livre['etat'],
-                    'prix' => $livre['prix'],
-                ]);
-                print "Exemplaire ajouté\n";
-            }
-
-            if (!$auteur) {
-                // Create an author if they do not exist
-                $auteur = Auteur::create([
-                    "nom" => $livre['auteur_nom'],
-                    "prenom" => $livre['auteur_prenom'],
-                    "Nationalite" => $livre['Nationalite'],
-                ]);
-                print "Auteur ajouté\n";
-
-                // Create a new book if it does not exist
-                $new_livre = Livre::create([
-                    "id" => $livre['id'],
-                    "titre" => $livre['titre'],
-                    "anneePublication" => $livre['anneePublication'],
-                    "category" => $livre['category'],
-                    "description" => $livre['description'],
-                    "maison_edition" => $livre['maison_edition'],
-                    "nbr_page" => $livre['nbr_page'],
-                    "etatcom" => 'acheté',
-                    "langue" => $livre['langue']
-                ]);
-                print "Nouveau livre ajouté\n";
-
-                // Create a relationship between the author and the book
-                Ecrir::create([
-                    "idAu" => $auteur->id,
-                    "id" => $livre['id']
-                ]);
-                print "Relation Ecrire ajoutée\n";
-
-                // Loop through each photo path and create a photo record
-                foreach ($livre['photos'] as $photo) {
-                    Photo::create([
-                        "path" => $photo,
-                        "isbn" => $livre['id'],
+                if ($livre_exist) {
+                    // Create an exemplaire if the book exists
+                    Exemplaire::create([
+                        'isbn' => $livre_exist->id,
+                        'etat' => $livre['etat'],
+                        'prix' => $livre['prix'],
                     ]);
-                    print "Nouvelle photo ajoutée\n";
+                    print "Exemplaire ajouté\n";
                 }
+
+                if (!$auteur) {
+                    // Create an author if they do not exist
+                    $auteur = Auteur::create([
+                        "nom" => $livre['auteur_nom'],
+                        "prenom" => $livre['auteur_prenom'],
+                        "Nationalite" => $livre['Nationalite'],
+                    ]);
+                    print "Auteur ajouté\n";
+
+                    // Create a new book if it does not exist
+                    $new_livre = Livre::create([
+                        "id" => $livre['id'],
+                        "titre" => $livre['titre'],
+                        "anneePublication" => $livre['anneePublication'],
+                        "category" => $livre['category'],
+                        "description" => $livre['description'],
+                        "maison_edition" => $livre['maison_edition'],
+                        "nbr_page" => $livre['nbr_page'],
+                        "etatcom" => 'acheté',
+                        "langue" => $livre['langue']
+                    ]);
+                    print "Nouveau livre ajouté\n";
+
+                    // Create a relationship between the author and the book
+                    Ecrir::create([
+                        "idAu" => $auteur->id,
+                        "id" => $livre['id']
+                    ]);
+                    print "Relation Ecrire ajoutée\n";
+
+                    // Loop through each photo path and create a photo record
+                    foreach ($livre['photos'] as $photo) {
+                        Photo::create([
+                            "path" => $photo,
+                            "isbn" => $livre['id'],
+                        ]);
+                        print "Nouvelle photo ajoutée\n";
+                    }
+                }
+            } else {
+                print "Ce livre n'est pas sélectionné\n";
             }
-        } else {
-            print "Ce livre n'est pas sélectionné\n";
         }
+
+        // Flush the session after processing
+        $request->session()->flush();
+        print "Session supprimée\n";
+
+        return "Livres ajoutés avec succès";
     }
-
-    // Flush the session after processing
-    $request->session()->flush();
-    print "Session supprimée\n";
-
-    return "Livres ajoutés avec succès";
-}
-
- 
-    
-
 
     public function store(Request $request)
     {
@@ -177,103 +169,100 @@ class livreController extends Controller
         return response()->json(['message' => 'Book proposed successfully!', 'data' => $livreproposer], 200);
     }
 
-
-
     public function showproposedlivres(Request $request)
     {
-        return $request->session()->all('livresproposer');
-    }
-    public function Set_etatcom_livre(Request $request){
-        $livre=Livre::find($request->id);
-        if($livre){
-        if($request->type =='archive') $livre->etatcom=$request->type; 
-        if($request->type =='achete') $livre->etatcom=$request->type;
-        if($request->type =='vonde') $livre->etatcom=$request->type;
-        if($request->type =='a vendr') $livre->etatcom=$request->type;
-        $livre->save();
-        return "faite";}
-        else return "livre untrovalble";
-        
-
+        return $request->session()->get('livresproposer', []);
     }
 
+    public function Set_etatcom_livre(Request $request)
+    {
+        $livre = Livre::find($request->id);
+        if ($livre) {
+            if (in_array($request->type, ['archive', 'achete', 'vonde', 'a vendr'])) {
+                $livre->etatcom = $request->type;
+                $livre->save();
+                return "fait";
+            } else {
+                return "Type d'état non valide";
+            }
+        } else {
+            return "livre introuvable";
+        }
+    }
 
     /**
      * Display the specified resource.
      */
     public function showall(Request $request)
     {   
-        $livre=DB::table(table:'livres')
-        ->where('etatcom','=','a vendr')
-        ->select('*')
-        ->get();  
-        return $livre;
-    }
-
-//les fonctions de recherche
-    public function recherche(Request $request){
-        $typee=request()->type;
-        if($typee == "titre"){
-            $livre=DB::table(table:'livres')->select('*')->where('titre','=',request()->value)->get();  
-            $photos=DB::table(table:'photo')->select('path')->where('isbn','=',$livre[0]->id)->get();  
-            foreach($livre as $livr){
-            $livr->photos = $photos;
-        }
-            return $livre;
-
-            }
-        else if($typee == "isbn"){ 
-                $livre=livre::find(request()->value);
-                $photos=DB::table(table:'photo')->select('path')->where('isbn','=',$livre[0]->id)->get();  
-                $livre[0]->photos = $photos;
-                    return $livre;
-                }
-        else if($typee == "auteur"){
-        if(request()->value && !request()->value2)
-        {
-            $livre = DB::table('livres as l')
-            ->join('auteur as r', 'l.ida', '=', 'r.ida')
-            ->select('l.*')
-            ->where('r.nom', 'like', '%' . request()->value . '%')
-            ->get();
-            foreach($livre as $livr){
-                $photos=DB::table(table:'photo')->select('path')->where('isbn','=',$livr->id)->get();  
-                $livr->photos = $photos;
-            }            return $livre;
-        }elseif(request()->value2 && !request()->value){
-            
-            $livre = DB::table('livres as l')
-            ->join('auteur as r', 'l.ida', '=', 'r.ida')
-            ->select('l.*')
-            ->where('r.prenom', 'like', '%' . request()->value2 . '%')
-            ->get();
-            $photos=DB::table(table:'photo')->select('path')->where('isbn','=',$livre[0]->id)->get();  
-            $livre[0]->photos = $photos;
-            return $livre;
-        }elseif(request()->value2 && !request()->value){
-            $livre = DB::table('livres as l')
-            ->join('auteur as r', 'l.ida', '=', 'r.ida')
-            ->select('l.*')
-            ->where('r.nom', 'like', '%' . request()->value . '%')
-            ->where('r.prenom', 'like', '%' . request()->value2 . '%')
+        $livres = DB::table('livres')
+            ->where('etatcom', '=', 'a vendr')
+            ->select('*')
             ->get();  
-            $photos=DB::table(table:'photo')->select('path')->where('isbn','=',$livre[0]->id)->get();  
-            $livre[0]->photos = $photos;
+        return $livres;
+    }
+
+    // Les fonctions de recherche
+    public function recherche(Request $request)
+    {
+        $typee = $request->type;
+
+        if ($typee == "titre") {
+            $livre = DB::table('livres')->select('*')->where('titre', '=', $request->value)->get();
+            if ($livre->isNotEmpty()) {
+                $photos = DB::table('photo')->select('path')->where('isbn', '=', $livre[0]->id)->get();
+                $livre[0]->photos = $photos;
+            }
+            return $livre;
+
+        } elseif ($typee == "isbn") {
+            $livre = Livre::find($request->value);
+            if ($livre) {
+                $photos = DB::table('photo')->select('path')->where('isbn', '=', $livre->id)->get();
+                $livre->photos = $photos;
+            }
+            return $livre;
+
+        } elseif ($typee == "auteur") {
+            if ($request->value && !$request->value2) {
+                $livre = DB::table('livres as l')
+                    ->join('auteurs as r', 'l.ida', '=', 'r.id')
+                    ->select('l.*')
+                    ->where('r.nom', 'like', '%' . $request->value . '%')
+                    ->get();
+            } elseif ($request->value2 && !$request->value) {
+                $livre = DB::table('livres as l')
+                    ->join('auteurs as r', 'l.ida', '=', 'r.id')
+                    ->select('l.*')
+                    ->where('r.prenom', 'like', '%' . $request->value2 . '%')
+                    ->get();
+            } elseif ($request->value && $request->value2) {
+                $livre = DB::table('livres as l')
+                    ->join('auteurs as r', 'l.ida', '=', 'r.id')
+                    ->select('l.*')
+                    ->where('r.nom', 'like', '%' . $request->value . '%')
+                    ->where('r.prenom', 'like', '%' . $request->value2 . '%')
+                    ->get();
+            }
+
+            if ($livre->isNotEmpty()) {
+                foreach ($livre as $livr) {
+                    $photos = DB::table('photo')->select('path')->where('isbn', '=', $livr->id)->get();
+                    $livr->photos = $photos;
+                }
+            }
+            return $livre;
+
+        } elseif ($typee == "category") {
+            $livre = DB::table('livres')->select('*')->where('category', '=', $request->value)->get();
+            if ($livre->isNotEmpty()) {
+                $photos = DB::table('photo')->select('path')->where('isbn', '=', $livre[0]->id)->get();
+                $livre[0]->photos = $photos;
+            }
             return $livre;
         }
-    
-    }
-            //$livre=DB::table(table:'livres')->select('*')->where('ida','=',request()->value)->get();  
-              //  return $livre;
-            
-        else if($typee == "category"){
-            $livre=DB::table(table:'livres')->select('*')->where('category','=',request()->value)->get();  
-            $photos=DB::table(table:'photo')->select('path')->where('isbn','=',$livre[0]->id)->get();  
-            $livre[0]->photos = $photos;    
-            return $livre;
-            }
+
         return 'not found';
-    
     }
 
     /**
@@ -290,16 +279,19 @@ class livreController extends Controller
     { 
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
     public function archiverLivre($id)
     {
-    $livre=Livre::find($id);
-    if($livre) $livre->etatcom='archivé';
-    else return response()->json(['error'=> 'livre introuvable']);
-    return response()->json(['error'=>'Le livre a été supprimé avec succès']);
+        $livre = Livre::find($id);
+        if ($livre) {
+            $livre->etatcom = 'archivé';
+            $livre->save();
+            return response()->json(['message' => 'Le livre a été archivé avec succès']);
+        } else {
+            return response()->json(['error' => 'livre introuvable']);
+        }
     }
 
     public function edite_livre(Request $request)
@@ -311,19 +303,16 @@ class livreController extends Controller
         }
 
         // Validate the request data (you can adjust this based on your validation rules)
-            $validatedData=$request->validate([
-                'titre'=>'string|max:255',
-                'auteur'=>'string|max:255',
-                'anneePublication'=>'string|max:255',
-                'etat'=>'string|max:255',
-                'prix'=>'string|max:255',
-                'photo1' => 'string', // Example validation rules for an image upload
-                'photo2' => 'string', // Example validation rules for the photo upload
-
-                
+        $validatedData = $request->validate([
+            'titre' => 'string|max:255',
+            'auteur' => 'string|max:255',
+            'anneePublication' => 'string|max:255',
+            'etat' => 'string|max:255',
+            'prix' => 'string|max:255',
+            'photo1' => 'string', // Example validation rules for an image upload
+            'photo2' => 'string', // Example validation rules for the photo upload
         ]);
-            // Add more validation rules for other fields as needed
-    
+
         // Update only the fields that are not empty in the request
         foreach ($validatedData as $key => $value) {
             if (!empty($value)) {
@@ -339,10 +328,10 @@ class livreController extends Controller
             return response()->json(['message' => 'No changes detected'], 200);
         }
     }
-    public function test($request){
-        $tet=$request->par;
+
+    public function test(Request $request)
+    {
+        $tet = $request->par;
         print $tet;
-        
     }
-    }
-    
+}
