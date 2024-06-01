@@ -9,6 +9,7 @@ use App\Models\Livreur;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Exemplaire;
+use App\Models\localisation;
 
 class LivraisonController extends Controller
 {
@@ -227,27 +228,37 @@ public function mettreAJourStatutLivraison(Request $request, $id)
     // Fonction pour voir les détails de la livraison avec informations supplémentaires
 public function voirDetailsLivraison($id)
     {
-        $livraison = Livraison::find($id);
+        $livraisons = Livraison::where('id',$id)->get();
 
-        if (!$livraison) {
+        if (!$livraisons) {
             return response()->json([
                 'message' => 'Livraison non trouvée.'
             ], 404);
         }
-
-        // Récupérer les informations supplémentaires
-        $commande = Commande::find($livraison->idcom);
-        $client = User::find($commande->idAch);
-        $exemplaire = Exemplaire::find($commande->idex);
-
-        return response()->json([
-            'livraison' => $livraison,
-            'nom_client' => $client->name,
-            'numero_telephone' => $client->numeroDetet,
-            'distination' => $livraison->dist,
-            'prix' => $exemplaire->prix
-        ]);
-    }
+            
+            $detailsLivraisons = [];
+        
+            foreach ($livraisons as $livraison) {
+                // Récupérer les informations supplémentaires
+                $commande = Commande::find($livraison['idcom']);
+                $client = User::find($commande->idAch);
+                $localisation=localisation::find($livraison['idloc']);
+                $detailsLivraisons[] = [
+                    'date livraison'=>$livraison['datelivr'],
+                    'Heure  de livraison'=> $livraison['heure'],
+                    'nom_client' => $client->nom,
+                    'numero_telephone' => $client->numeroDetel,
+                    'distination' => $livraison['dist'],
+                    'localisation'=>$localisation->direction,
+                    'montant_total' => $commande->montantTotal
+                ];
+            }
+        
+            return response()->json([
+                'livraisons' => $detailsLivraisons
+            ]);
+        }
+        
 
     // Fonction pour mettre à jour le planning de la livraison
 public function mettreAJourPlanningLivraison(Request $request, $id)

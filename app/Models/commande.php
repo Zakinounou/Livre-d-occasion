@@ -14,7 +14,8 @@ class commande extends Model
         'idAch',
         'dist', 
         'idpan',
-        'idloc'
+        'idloc',
+        'montantTotal'
     ];
     public $timestamps=false;
 

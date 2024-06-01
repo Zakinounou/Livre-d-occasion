@@ -3,8 +3,6 @@
 use App\Http\Controllers\adminController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\livreController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\achatController;
 use App\Http\Controllers\Api\NewPasswordController;
 use App\Http\Controllers\LivraisonController;
@@ -12,7 +10,6 @@ use App\Http\Controllers\localisationController;
 use App\Http\Controllers\panierController;
 use App\Http\Controllers\promotionController;
 use App\Http\Controllers\userController;
-use App\Http\Controllers\LocationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
@@ -77,7 +74,7 @@ Route::get('/AvailableHours',[LivraisonController::class,'getAvailableHours']);
 Route::post('/set-chosen-hour', [LivraisonController::class, 'setChosenHour'])->middleware('auth:sanctum');
 
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/livraisons-assignees', [LivraisonController::class, 'voirLivraisonsAssignees']);
     Route::post('/mettre-a-jour-statut-livraison/{id}', [LivraisonController::class, 'mettreAJourStatutLivraison']);
     Route::get('/voir-details-livraison/{id}', [LivraisonController::class, 'voirDetailsLivraison']);
